@@ -1,0 +1,26 @@
+# Build outputs
+dist/
+bin/
+obj/
+*.pdb
+*.user
+*.suo
+.vs/
+
+# Generated QA binaries and duplicate screenshots
+qa/*.exe
+/qa-*.png
+
+# Release binaries are uploaded through GitHub Releases
+release/*.zip
+release/*.sha256.txt
+release/每日进度-v1.0.0-Windows-便携版/
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Local task data must never be committed
+tasks.json
+tasks.json.bak
+
