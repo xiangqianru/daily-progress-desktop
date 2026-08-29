@@ -21,7 +21,7 @@ namespace DailyProgressDesk
 
         public AppData()
         {
-            Version = 2;
+            Version = 3;
             ThemeName = "Blue";
             StartWithWindows = false;
             StartMinimized = false;
@@ -115,6 +115,7 @@ namespace DailyProgressDesk
         public string Notes { get; set; }
         public string CreatedAt { get; set; }
         public string CompletedAt { get; set; }
+        public int SortOrder { get; set; }
         public List<ProjectStep> Steps { get; set; }
 
         public ProjectTask()

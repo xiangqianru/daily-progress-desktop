@@ -201,8 +201,10 @@ namespace DailyProgressDesk
 
             stepsFlow = new FlowLayoutPanel();
             stepsFlow.Dock = DockStyle.Fill;
-            stepsFlow.FlowDirection = FlowDirection.LeftToRight;
-            stepsFlow.WrapContents = true;
+            // Keep steps in one vertical column so resize operations cannot
+            // turn the hidden horizontal range into an incorrect scroll range.
+            stepsFlow.FlowDirection = FlowDirection.TopDown;
+            stepsFlow.WrapContents = false;
             stepsFlow.AutoScroll = true;
             stepsFlow.BackColor = Theme.Background;
             stepsFlow.Padding = new Padding(24, 12, 24, 12);

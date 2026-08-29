@@ -14,7 +14,7 @@ qa/*.exe
 # Release binaries are uploaded through GitHub Releases
 release/*.zip
 release/*.sha256.txt
-release/每日进度-v1.0.0-Windows-便携版/
+release/每日进度-v*-Windows-便携版/
 
 # Python caches
 __pycache__/
@@ -23,4 +23,3 @@ __pycache__/
 # Local task data must never be committed
 tasks.json
 tasks.json.bak
-

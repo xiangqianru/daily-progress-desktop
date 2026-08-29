@@ -16,11 +16,16 @@ namespace DailyProgressDesk
         public AppData Data { get; private set; }
         public string DataFile { get { return dataFile; } }
 
-        public DataStore()
+        public DataStore() : this(null)
         {
-            dataDirectory = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "DailyProgressDesk");
+        }
+
+        internal DataStore(string dataDirectoryOverride)
+        {
+            dataDirectory = string.IsNullOrWhiteSpace(dataDirectoryOverride)
+                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "DailyProgressDesk")
+                : dataDirectoryOverride;
             dataFile = Path.Combine(dataDirectory, "tasks.json");
             serializer = new JavaScriptSerializer();
             serializer.MaxJsonLength = 8 * 1024 * 1024;
@@ -73,6 +78,11 @@ namespace DailyProgressDesk
             if (Data.DailyTemplates == null) Data.DailyTemplates = new List<DailyTemplate>();
             if (Data.DailyDays == null) Data.DailyDays = new List<DailyDay>();
             if (Data.Projects == null) Data.Projects = new List<ProjectTask>();
+            if (Data.Version < 3)
+            {
+                ProjectOrdering.InitializeLegacyOrder(Data.Projects);
+                Data.Version = 3;
+            }
             foreach (DailyDay day in Data.DailyDays)
                 if (day.Items == null) day.Items = new List<DailyDayItem>();
             foreach (ProjectTask project in Data.Projects)

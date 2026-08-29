@@ -412,10 +412,11 @@ namespace DailyProgressDesk
 
             FlowLayoutPanel flow = new FlowLayoutPanel();
             flow.Dock = DockStyle.Fill;
-            // Full-width cards wrap into one vertical column. This avoids the
-            // persistent horizontal scrollbar produced by TopDown/no-wrap mode.
-            flow.FlowDirection = FlowDirection.LeftToRight;
-            flow.WrapContents = true;
+            // Use a real vertical stack. Simulating one column with LeftToRight
+            // wrapping leaves a stale horizontal layout range after the window
+            // is enlarged and then reduced, which corrupts vertical scrolling.
+            flow.FlowDirection = FlowDirection.TopDown;
+            flow.WrapContents = false;
             flow.AutoScroll = true;
             flow.BackColor = Theme.Card;
             flow.Margin = new Padding(0);
@@ -528,11 +529,7 @@ namespace DailyProgressDesk
         {
             projectFlow.SuspendLayout();
             projectFlow.Controls.Clear();
-            ProjectTask[] active = store.Data.Projects
-                .Where(p => p.Status != "已完成")
-                .OrderBy(p => p.Status == "等待中" ? 1 : 0)
-                .ThenBy(p => DueSort(p.DueDate))
-                .ToArray();
+            ProjectTask[] active = ProjectOrdering.Active(store.Data.Projects);
 
             projectCountLabel.Text = active.Length + " 项进行中";
             if (active.Length == 0)
@@ -541,22 +538,17 @@ namespace DailyProgressDesk
             }
             else
             {
-                foreach (ProjectTask source in active)
+                for (int index = 0; index < active.Length; index++)
                 {
-                    ProjectTask project = source;
-                    projectFlow.Controls.Add(BuildProjectCard(project));
+                    ProjectTask project = active[index];
+                    projectFlow.Controls.Add(BuildProjectCard(project,
+                        index > 0, index < active.Length - 1));
                 }
             }
             projectFlow.ResumeLayout();
         }
 
-        private DateTime DueSort(string value)
-        {
-            DateTime result;
-            return DateTime.TryParse(value, out result) ? result : DateTime.MaxValue;
-        }
-
-        private Control BuildProjectCard(ProjectTask project)
+        private Control BuildProjectCard(ProjectTask project, bool canMoveUp, bool canMoveDown)
         {
             RoundedPanel card = new RoundedPanel();
             card.CornerRadius = 14;
@@ -568,7 +560,7 @@ namespace DailyProgressDesk
 
             Label title = Theme.MakeLabel(project.Title, Theme.SectionFont, Theme.Text);
             title.Location = new Point(14, 12);
-            title.MaximumSize = new Size(Math.Max(100, card.Width - 120), 28);
+            title.MaximumSize = new Size(Math.Max(100, card.Width - 190), 28);
             card.Controls.Add(title);
 
             Label status = Theme.MakeLabel(project.Status, Theme.SmallFont,
@@ -618,15 +610,44 @@ namespace DailyProgressDesk
             };
             card.Controls.Add(detail);
 
+            Button moveDown = Theme.MakeButton("↓", false);
+            moveDown.Size = new Size(34, 34);
+            moveDown.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            moveDown.Location = new Point(card.Width - 124, 15);
+            moveDown.Font = Theme.SectionFont;
+            moveDown.Enabled = canMoveDown;
+            moveDown.AccessibleName = "下移任务";
+            moveDown.Click += delegate { MoveProject(project, 1); };
+            card.Controls.Add(moveDown);
+
+            Button moveUp = Theme.MakeButton("↑", false);
+            moveUp.Size = new Size(34, 34);
+            moveUp.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            moveUp.Location = new Point(card.Width - 164, 15);
+            moveUp.Font = Theme.SectionFont;
+            moveUp.Enabled = canMoveUp;
+            moveUp.AccessibleName = "上移任务";
+            moveUp.Click += delegate { MoveProject(project, -1); };
+            card.Controls.Add(moveUp);
+
             card.Resize += delegate
             {
                 detail.Left = card.ClientSize.Width - 84;
-                title.MaximumSize = new Size(Math.Max(100, card.ClientSize.Width - 120), 28);
+                moveDown.Left = card.ClientSize.Width - 124;
+                moveUp.Left = card.ClientSize.Width - 164;
+                title.MaximumSize = new Size(Math.Max(100, card.ClientSize.Width - 190), 28);
                 next.MaximumSize = new Size(Math.Max(100, card.ClientSize.Width - 130), 22);
                 bar.Width = Math.Max(100, card.ClientSize.Width - 175);
                 percent.Left = card.ClientSize.Width - percent.Width - 15;
             };
             return card;
+        }
+
+        private void MoveProject(ProjectTask project, int direction)
+        {
+            if (!ProjectOrdering.Move(store.Data.Projects, project, direction)) return;
+            store.Save();
+            RefreshProjects();
         }
 
         private Control BuildEmpty(string title, string description)
@@ -719,6 +740,7 @@ namespace DailyProgressDesk
         private void AddProject(object sender, EventArgs e)
         {
             ProjectTask project = new ProjectTask();
+            project.SortOrder = ProjectOrdering.Next(store.Data.Projects);
             using (ProjectEditDialog dialog = new ProjectEditDialog(project, true))
             {
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
